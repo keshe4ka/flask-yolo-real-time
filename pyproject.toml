@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "online-streaming-webrtc"
+version = "0.1.0"
+description = ""
+authors = ["keshe4ka <a.anaschenko@btc-s.ru>"]
+readme = "README.md"
+packages = [{include = "online_streaming_webrtc"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+opencv-python = "^4.8.0.76"
+flask = "^3.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
