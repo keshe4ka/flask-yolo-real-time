@@ -10,6 +10,7 @@ packages = [{include = "online_streaming_webrtc"}]
 python = "^3.10"
 opencv-python = "^4.8.0.76"
 flask = "^3.0.0"
+flask-httpauth = "^4.8.0"
 
 
 [build-system]
