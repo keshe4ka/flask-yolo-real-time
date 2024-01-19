@@ -11,6 +11,23 @@ class Camera:
         self.camera = cv2.VideoCapture(settings.camera)
         self.model = YOLO(settings.path_model)
 
+    def get_count(self):
+        person_count = 0
+        laptop_count = 0
+        _, frame = self.camera.read()
+
+        results = self.model(frame, stream=True)
+        for r in results:
+            boxes = r.boxes
+            for box in boxes:
+                # class name
+                cls = int(box.cls[0])
+                if cls == settings.class_names.index('person'):
+                    person_count += 1
+                elif cls == settings.class_names.index('laptop'):
+                    laptop_count += 1
+        return person_count, laptop_count
+
     def gen_frames(self):
         while True:
             success, frame = self.camera.read()

@@ -18,13 +18,39 @@
             <h3 class="mt-5">Оценка эффективности использования МТО</h3>
             <img src="{{ url_for('video_feed') }}" width="100%">
             <ul>
-                <li>Людей в помещении: {{person_count}}</li>
-                <li>Компьютеров используется: {{laptop_count}}</li>
-                <li>Еще какая-то метрика: 6</li>
+                <li id="person_count">Людей в помещении:</li>
+                <li id="laptop_count">Компьютеров используется:</li>
             </ul>
         </div>
 
     </div>
 </div>
+<script>
+    setInterval(function () {
+        // Создаем объект XMLHttpRequest
+        var xhr = new XMLHttpRequest();
+
+        // Указываем URL API, откуда будем получать данные
+        var url = '/objects-count';
+
+        // Отправляем GET-запрос на получение данных
+        xhr.open('GET', url, true);
+
+        // Обрабатываем ответ от сервера
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                // Парсим полученные данные в формате JSON
+                var data = JSON.parse(xhr.responseText);
+
+                // Обновляем значения person_count и laptop_count
+                document.getElementById('person_count').textContent = 'Людей в помещении: ' + data.person_count;
+                document.getElementById('laptop_count').textContent = 'Компьютеров используется: ' + data.laptop_count;
+            }
+        };
+
+        // Отправляем запрос
+        xhr.send();
+    }, 200);
+</script>
 </body>
 </html>
