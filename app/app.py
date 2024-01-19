@@ -1,5 +1,3 @@
-from random import random, randint
-
 from flask import Flask, render_template, Response, jsonify
 
 from app.auth import auth
@@ -7,10 +5,6 @@ from app.camera import Camera
 
 app = Flask(__name__)
 camera = Camera()
-
-
-# use 0 for web camera
-#  for cctv camera use rtsp://username:password@ip_address:554/user=username_password='password'_channel=channel_number_stream=0.sdp' instead of camera
 
 
 @app.route('/video_feed')
@@ -27,11 +21,8 @@ def index():
 
 @app.route('/objects-count')
 def objects_count():
-    # Здесь вам нужно реализовать логику получения данных из вашего API
-    # Замените следующие две строки на вашу реализацию
     person_count, laptop_count = camera.get_count()
 
-    # Возвращаем данные в формате JSON
     return jsonify({
         'person_count': person_count,
         'laptop_count': laptop_count
