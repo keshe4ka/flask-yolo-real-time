@@ -11,6 +11,8 @@ python = "^3.10"
 opencv-python = "^4.8.0.76"
 flask = "^3.0.0"
 flask-httpauth = "^4.8.0"
+pydantic-settings = "^2.1.0"
+ultralytics = "^8.1.2"
 
 
 [build-system]
