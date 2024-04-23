@@ -82,17 +82,12 @@ class Camera:
         cap_height = round(cap_height / 32) * 32
         cap_width = round(cap_width / 32) * 32
 
-        # пропорции разрешения экрана
-        frame_proportions = cap_width / cap_height / 100
-
         # дистанция для определения владельца предмета
-        distance_threshold = 5.7
+        distance_threshold = 405.0
 
         # {item_id: person_id}
         item_person_association = dict()
 
-        # {item_id: vector}
-        # self.item_person_vector = dict()
 
         while self.camera.isOpened():
             # Читаем кадр из видео
