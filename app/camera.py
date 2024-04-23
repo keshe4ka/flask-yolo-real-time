@@ -97,153 +97,150 @@ class Camera:
         while self.camera.isOpened():
             # Читаем кадр из видео
             success, frame = self.camera.read()
+            if not success:
+                break
 
-            if success:
-                # результаты
-                results = self.model.track(
-                    frame, persist=True,  # Сохранение идентификаторов ранее обнаруженных объектов
-                    imgsz=(cap_height, cap_width),  # Размер изображения для вывода
-                    # tracker='botsort_custom.yaml'
-                )
+            results = self.model.track(
+                frame, persist=True,  # Сохранение идентификаторов ранее обнаруженных объектов
+                imgsz=(cap_height, cap_width),  # Размер изображения для вывода
+                # tracker='botsort_custom.yaml'
+            )
 
-                # Получение объекта Boxes
-                boxes = results[0].boxes
+            # Получение объекта Boxes
+            boxes = results[0].boxes
 
-                # Если на кадре есть объекты
-                if boxes.id is not None:
+            # Если на кадре есть объекты
+            if boxes.id is not None:
 
-                    class_dict = results[0].names  # словарь классов в model
-                    objs_box = boxes.xywh.cpu()  # боксы объектов в кадре
-                    list_objs_id = boxes.id.int().cpu().tolist()  # id объектов в кадре
-                    objs_cls = boxes.cls.int().cpu().tolist()  # классы объектов в кадре
-                    objs_scores = boxes.conf.tolist()  # score объектов в кадре
+                class_dict = results[0].names  # словарь классов в model
+                objs_box = boxes.xywh.cpu()  # боксы объектов в кадре
+                list_objs_id = boxes.id.int().cpu().tolist()  # id объектов в кадре
+                objs_cls = boxes.cls.int().cpu().tolist()  # классы объектов в кадре
+                objs_scores = boxes.conf.tolist()  # score объектов в кадре
 
-                    # Получаем списки индексов предметов и людей на текущем кадре
-                    items_class = ['Handbag', 'Luggage-and-bags', 'Wheelchair',
-                                   'backpack', 'handbag', 'suitcase', 'bird']  # stock yolo class
+                # Получаем списки индексов предметов и людей на текущем кадре
+                items_class = ['Handbag', 'Luggage-and-bags', 'Wheelchair',
+                               'backpack', 'handbag', 'suitcase', 'bird']  # stock yolo class
 
-                    person_class = ['Human-body', 'person']  # stock yolo class
+                person_class = ['Human-body', 'person']  # stock yolo class
 
-                    item_index_list = [index for index, value in enumerate(objs_cls) if
-                                       class_dict[value] in items_class]
-                    person_index_list = [index for index, value in enumerate(objs_cls) if
-                                         class_dict[value] in person_class]
+                item_index_list = [index for index, value in enumerate(objs_cls) if
+                                   class_dict[value] in items_class]
+                person_index_list = [index for index, value in enumerate(objs_cls) if
+                                     class_dict[value] in person_class]
 
-                    '''
-                    Сопоставление предмет-человек для всех предметов в кадре
-                    '''
-                    for item_index in item_index_list:
-                        item_id = list_objs_id[item_index]
+                '''
+                Сопоставление предмет-человек для всех предметов в кадре
+                '''
+                for item_index in item_index_list:
+                    item_id = list_objs_id[item_index]
 
-                        # если для предмета не определен владелец
-                        if item_id not in item_person_association:
+                    # если для предмета не определен владелец
+                    if item_id not in item_person_association:
+                        # центр бокса предмета [item_x, item_y]
+                        item_center_point = [float(i) for i in objs_box[item_index][:2]]
+
+                        # определяем владельца
+                        for person_index in person_index_list:
+
+                            # центр бокса человека [person_x, person_y]
+                            person_center_point = [float(i) for i in objs_box[person_index][:2]]
+                            vector_between_centers_boxes = np.array([item_center_point,
+                                                                     person_center_point],
+                                                                    np.int32).reshape((-1, 1, 2))
+
+                            person_center_point_with_coef = [person_center_point[0] ** 2 / cap_width,
+                                                             person_center_point[1] ** 2 / cap_height]
+                            '''Евклидово расстояние-это норма L2 вектора
+                            функция np.linalg.norm() по умолчанию использует ord=None (for vectors 2-norm)'''
+                            distance_between_boxes = np.linalg.norm(np.array([item_center_point,
+                                                                              person_center_point_with_coef],
+                                                                             np.int32).reshape((-1, 1, 2)))
+
+                            # если расстояние между боксами удовлетворяет условию определяем человека как владельца предмета
+                            if distance_between_boxes < distance_threshold:
+                                item_person_association[item_id] = list_objs_id[
+                                    person_index]  # {item_id: person_id}
+                                self.item_person_vector[item_id] = vector_between_centers_boxes  # {item_id: vector}
+                            # если расстояние не удовлетворяет условию и нет владельца - владелец и вектор None
+                            else:
+                                if item_id not in item_person_association:
+                                    item_person_association[item_id] = None  # {item_id: person_id}
+                                    self.item_person_vector[item_id] = None  # {item_id: vector}
+
+                    # если для предмета определен владелец
+                    else:
+                        person_id = item_person_association[item_id]
+
+                        # если владелец в кадре - обновляем значение вектора
+                        if person_id in list_objs_id:
+                            person_index = list_objs_id.index(person_id)
                             # центр бокса предмета [item_x, item_y]
                             item_center_point = [float(i) for i in objs_box[item_index][:2]]
+                            # центр бокса человека [person_x, person_y]
+                            person_center_point = [float(i) for i in objs_box[person_index][:2]]
+                            vector_between_centers_boxes = np.array([item_center_point,
+                                                                     person_center_point],
+                                                                    np.int32).reshape((-1, 1, 2))
+                            self.item_person_vector[item_id] = vector_between_centers_boxes  # {item_id: vector}
 
-                            # определяем владельца
-                            for person_index in person_index_list:
-
-                                # центр бокса человека [person_x, person_y]
-                                person_center_point = [float(i) for i in objs_box[person_index][:2]]
-                                vector_between_centers_boxes = np.array([item_center_point,
-                                                                         person_center_point],
-                                                                        np.int32).reshape((-1, 1, 2))
-
-                                person_center_point_with_coef = [person_center_point[0] ** 2 / cap_width,
-                                                                 person_center_point[1] ** 2 / cap_height]
-                                '''Евклидово расстояние-это норма L2 вектора
-                                функция np.linalg.norm() по умолчанию использует ord=None (for vectors 2-norm)'''
-                                distance_between_boxes = np.linalg.norm(np.array([item_center_point,
-                                                                                  person_center_point_with_coef],
-                                                                                 np.int32).reshape((-1, 1, 2)))
-
-                                # если расстояние между боксами удовлетворяет условию определяем человека как владельца предмета
-                                if distance_between_boxes < distance_threshold:
-                                    item_person_association[item_id] = list_objs_id[
-                                        person_index]  # {item_id: person_id}
-                                    self.item_person_vector[item_id] = vector_between_centers_boxes  # {item_id: vector}
-                                # если расстояние не удовлетворяет условию и нет владельца - владелец и вектор None
-                                else:
-                                    if item_id not in item_person_association:
-                                        item_person_association[item_id] = None  # {item_id: person_id}
-                                        self.item_person_vector[item_id] = None  # {item_id: vector}
-
-                        # если для предмета определен владелец
+                        # если владелец не в кадре - вектор None
                         else:
-                            person_id = item_person_association[item_id]
-
-                            # если владелец в кадре - обновляем значение вектора
-                            if person_id in list_objs_id:
-                                person_index = list_objs_id.index(person_id)
-                                # центр бокса предмета [item_x, item_y]
-                                item_center_point = [float(i) for i in objs_box[item_index][:2]]
-                                # центр бокса человека [person_x, person_y]
-                                person_center_point = [float(i) for i in objs_box[person_index][:2]]
-                                vector_between_centers_boxes = np.array([item_center_point,
-                                                                         person_center_point],
-                                                                        np.int32).reshape((-1, 1, 2))
-                                self.item_person_vector[item_id] = vector_between_centers_boxes  # {item_id: vector}
-
-                            # если владелец не в кадре - вектор None
-                            else:
-                                # {item_id: vector}
-                                self.item_person_vector[item_id] = None
-
-                    '''если предмет не в кадре - вектор None'''
-                    for item_id in item_person_association:
-                        if item_id not in list_objs_id:
                             # {item_id: vector}
                             self.item_person_vector[item_id] = None
 
-                    '''Визуализация на кадр'''
-                    # Отображение связи предмет-человек
-                    cv2.polylines(frame,
-                                  [vector for vector in self.item_person_vector.values()],
-                                  isClosed=True, color=(0, 0, 255),  # BGR red
-                                  thickness=5)
+                '''если предмет не в кадре - вектор None'''
+                for item_id in item_person_association:
+                    if item_id not in list_objs_id:
+                        # {item_id: vector}
+                        self.item_person_vector[item_id] = None
 
-                    # надпись "оставлено" для объектов
-                    for item_id in item_person_association.keys():
+                '''Визуализация на кадр'''
+                # Отображение связи предмет-человек
+                cv2.polylines(frame,
+                              [vector for vector in self.item_person_vector.values()],
+                              isClosed=True, color=(0, 0, 255),  # BGR red
+                              thickness=5)
 
-                        # если объект в кадре
-                        if item_id in list_objs_id:
-                            item_index = list_objs_id.index(item_id)
-                            try:
-                                # item_person_vector =  {item_id: vector}
-                                item_vector = self.item_person_vector[item_id]
-                                # если вектор None
-                                if item_vector is None:
-                                    x, y, w, h = [int(i) for i in objs_box[item_index]]
-                                    text_item = 'leave'
-                                    cv2.rectangle(frame,
-                                                  (x - w // 2, y - 13),
-                                                  (x + w // 2 + len(text_item) + 1, y + 2),
-                                                  (0, 0, 0),  # черный цвет
-                                                  -1)
+                # надпись "оставлено" для объектов
+                for item_id in item_person_association.keys():
 
-                                    cv2.putText(frame, text_item, (x - w // 2 + 5, y),
-                                                cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
+                    # если объект в кадре
+                    if item_id in list_objs_id:
+                        item_index = list_objs_id.index(item_id)
+                        try:
+                            # item_person_vector =  {item_id: vector}
+                            item_vector = self.item_person_vector[item_id]
+                            # если вектор None
+                            if item_vector is None:
+                                x, y, w, h = [int(i) for i in objs_box[item_index]]
+                                text_item = 'leave'
+                                cv2.rectangle(frame,
+                                              (x - w // 2, y - 13),
+                                              (x + w // 2 + len(text_item) + 1, y + 2),
+                                              (0, 0, 0),  # черный цвет
+                                              -1)
 
-                            except (KeyError, ValueError):
-                                continue
+                                cv2.putText(frame, text_item, (x - w // 2 + 5, y),
+                                            cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
 
-                    #  Для каждого объекта в кадре
-                    for obj_id in list_objs_id:
-                        # Данные объекта
-                        obj_index = list_objs_id.index(obj_id)
-                        x, y, w, h = [int(i) for i in objs_box[obj_index]]
+                        except (KeyError, ValueError):
+                            continue
 
-                        # Отображение бокса объекта
-                        cv2.rectangle(frame,
-                                      (x - w // 2, y - h // 2),  # верхний левый угол
-                                      (x + w // 2, y + h // 2),  # нижний правый угол
-                                      (colors[obj_index % len(colors)]),  # уникальный цвет по индексу
-                                      3)
+                #  Для каждого объекта в кадре
+                for obj_id in list_objs_id:
+                    # Данные объекта
+                    obj_index = list_objs_id.index(obj_id)
+                    x, y, w, h = [int(i) for i in objs_box[obj_index]]
 
-                ret, buffer = cv2.imencode('.jpg', frame)
-                frame = buffer.tobytes()
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            else:
-                # Прервать цикл если видео закончилось
-                break
+                    # Отображение бокса объекта
+                    cv2.rectangle(frame,
+                                  (x - w // 2, y - h // 2),  # верхний левый угол
+                                  (x + w // 2, y + h // 2),  # нижний правый угол
+                                  (colors[obj_index % len(colors)]),  # уникальный цвет по индексу
+                                  3)
+
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
