@@ -9,7 +9,7 @@ camera = Camera()
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(camera.gen_frames(),
+    return Response(camera.gen_frames_2(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -21,11 +21,12 @@ def index():
 
 @app.route('/objects-count')
 def objects_count():
-    person_count, laptop_count = camera.get_count()
+    person_count, things_count, left_things_count = camera.get_count()
 
     return jsonify({
         'person_count': person_count,
-        'laptop_count': laptop_count
+        'things_count': things_count,
+        'left_things_count': left_things_count
     })
 
 

@@ -13,6 +13,9 @@ flask = "^3.0.0"
 flask-httpauth = "^4.8.0"
 pydantic-settings = "^2.1.0"
 ultralytics = "^8.1.2"
+sqlalchemy = "^2.0.25"
+psycopg2 = "^2.9.9"
+psycopg2-binary = "^2.9.9"
 
 
 [build-system]

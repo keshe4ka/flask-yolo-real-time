@@ -9,17 +9,18 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
           integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
 
-    <title>Оценка эффективности использования МТО в аудитории номер...</title>
+    <title>Обнаружение забытых вещей</title>
 </head>
 <body>
 <div class="container">
     <div class="row">
         <div class="col-lg-8  offset-lg-2">
-            <h3 class="mt-5">Оценка эффективности использования МТО</h3>
+            <h3 class="mt-5">Обнаружение оставленных вещей</h3>
             <img src="{{ url_for('video_feed') }}" width="100%">
             <ul>
                 <li id="person_count">Людей в помещении:</li>
-                <li id="laptop_count">Компьютеров используется:</li>
+                <li id="things_count">Вещей в помещении:</li>
+                <li id="left_things_count">Оставленных вещей в помещении:</li>
             </ul>
         </div>
 
@@ -44,7 +45,9 @@
 
                 // Обновляем значения person_count и laptop_count
                 document.getElementById('person_count').textContent = 'Людей в помещении: ' + data.person_count;
-                document.getElementById('laptop_count').textContent = 'Компьютеров используется: ' + data.laptop_count;
+                document.getElementById('things_count').textContent = 'Вещей в помещении: ' + data.things_count;
+                document.getElementById('left_things_count').textContent = 'Оставленных вещей в помещении: ' + data.left_things_count;
+
             }
         };
 
