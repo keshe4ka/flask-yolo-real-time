@@ -1,4 +1,4 @@
-# online-streaming-webrtc
+# Обнаружение оставленных вещей 
 
 ## Запуск проекта:
 1. `pip install poetry`
